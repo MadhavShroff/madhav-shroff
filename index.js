@@ -1,118 +1,214 @@
 var scene = new THREE.Scene();
-var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.x = -65;
-camera.position.y = 87;
-camera.position.z = 80;
 
-var renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.getElementById("container").appendChild(renderer.domElement);
+const setupGLTFLoader = () => {
+    const loader = new GLTFLoader();
+    const dracoLoader = new DRACOLoader();
+};
 
-// var stable = new THREE.Mesh(
-//   new THREE.BoxGeometry(2, 2, 2),
-//   new THREE.MeshLambertMaterial({ color: 0x964b00 })
-// );
-// scene.add(stable);
+const addLights = () => {
+    var pointLight = new THREE.PointLight(0xffff00, 1, 1000);
+    pointLight.position.set(0, 0, 0);
+    scene.add(pointLight);
 
-// var horse = new THREE.Mesh(
-//   new THREE.BoxGeometry(1, 1, 1),
-//   new THREE.MeshLambertMaterial({ color: 0xffffff })
-// );
-// horse.position.x = -2;
-// scene.add(horse);
+    var angle = 0;
+    var radius = 10000;
+    var speed = 0.0005;
 
-// var farmer = new THREE.Mesh(
-//   new THREE.BoxGeometry(0.5, 0.5, 0.5),
-//   new THREE.MeshLambertMaterial({ color: 0x8B4513 })
-// );
-// farmer.position.x = 2;
-// scene.add(farmer);
+    var animate = function () {
+        requestAnimationFrame(animate);
+        angle += speed;
+        pointLight.position.set(radius * Math.cos(angle), radius * Math.sin(angle), 0);
+    };
 
-var directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-directionalLight.position.set(10, 10, 0);
-scene.add(directionalLight);
+    animate();
+};
 
-var ambientLight = new THREE.AmbientLight(0x404040, 0.6);
-scene.add(ambientLight);
+const addCube = () => {
+    var whiteCube = new THREE.Mesh(
+        new THREE.BoxGeometry(1500, 1500, 1500),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 10 })
+    );
+    whiteCube.position.set(0, 0, 0);
+    whiteCube.castShadow = true;
+    whiteCube.receiveShadow = true;
+    scene.add(whiteCube);
 
-var whiteCube = new THREE.Mesh(
-  new THREE.BoxGeometry(10, 10, 10),
-  new THREE.MeshBasicMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.5 })
-);
-whiteCube.position.set(-20, 40, -55);
-scene.add(whiteCube);
+    var outerWhiteCube = new THREE.Mesh(
+        new THREE.BoxGeometry(100000, 100000, 100000),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 10 })
+    );
+    outerWhiteCube.position.set(0, 0, 0);
+    scene.add(outerWhiteCube);
+};
 
-const addHill = (x, z) => {
+const addText = async (text="Hi", surface=1, y=500, x=500) => {
+    const loader = new THREE.FontLoader();
+    const font = await new Promise((resolve) => {
+        loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', resolve);
+    });
+
+    const textGeometry = new THREE.TextGeometry(text, {
+        font: font,
+        size: 72, // Adjust the size of the text
+        height: 5, // Adjust the extrusion depth of the text
+        curveSegments: 12,
+        bevelEnabled: true,
+        bevelThickness: 2,
+        bevelSize: 2,
+        bevelOffset: 1,
+        bevelSegments: 2,
+    });
+
+    const textMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+    textMesh.castShadow = true;
+    textMesh.receiveShadow = true;
+    textMesh.rotation.set(0, Math.PI/2, 0);
+    // add textmesh helper
+    const helper = new THREE.BoxHelper(textMesh, 0xffff00);
+    helper.geometry.computeBoundingBox();
+    const box = helper.geometry.boundingBox;
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    console.log(size);
+    textMesh.position.set(750, x, y+(size.z/2));
+    scene.add(textMesh);
+};
+
+const random = (x, y) => {
+    return Math.random() * (y - x) + x;
+};
+
+const addHill = (x, z, r, top) => {
     var stack = new THREE.Group();
-    var numCylinders = 15;
-    var radiusTop = 49;
-    var radiusBottom = 50;
-    var height = 5;
-    var radialSegments = 32;
+    var radiusTop = r - 5;
+    var radiusBottom = r;
+    var levelHeight = 100;
+    var radialSegments = 64;
+    var direction = Math.pow(-1, Math.round(random(1, 2)));
+    var decrement = levelHeight;
+    var shift = random(0.5, 1) * decrement * direction;
+    var i = 0;
 
-    for (var i = 0; i < numCylinders; i++) {
-        if(radiusTop-(i*3) < 20) break;
-        var cylinderGeometry = new THREE.CylinderGeometry(radiusTop-(i*4), radiusBottom-(i*4), height, radialSegments);
-        var cylinderMaterial = new THREE.MeshLambertMaterial({ color: 0x4caf50 });
+    while (radiusTop > (top + levelHeight)) {
+        var cylinderGeometry = new THREE.CylinderGeometry(radiusTop, radiusBottom, levelHeight, radialSegments);
+        var cylinderMaterial = new THREE.MeshLambertMaterial({
+            color: 0x4caf50,
+            clipIntersection: true
+        });
         var cylinder = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
-
-        cylinder.position.y = (height / 2) + (i * height);
-        cylinder.position.x = i;
+        cylinder.castShadow = true;
+        cylinder.receiveShadow = true;
+        cylinder.position.set(shift * i, (levelHeight / 2) + (i * levelHeight), 0);
         stack.add(cylinder);
-
-        // Decrement the radius of the top and bottom for each iteration
-        radiusTop -= 0.25;
-        radiusBottom -= 0.25;
+        radiusTop -= decrement;
+        radiusBottom -= decrement;
+        i++;
     }
-    stack.position.x = x;
-    stack.position.z = z;
+
+    stack.position.set(x, -5000, z);
     scene.add(stack);
-}
+};
 
+const addHills = () => {
+    let sum = 0;
+    for (let i = 0; i < 50; i++) {
+        let x = Math.floor(Math.random() * (5000 - -5000 + 1)) - 5000;
+        let z = Math.floor(Math.random() * (5000 - -5000 + 1)) - 5000;
+        let dist = Math.sqrt(x * x + z * z);
+        let r = Math.floor(random(dist, dist + 10));
+        let top = Math.floor(random(250, 500)) + 10;
+        sum += r;
 
-const addPlane = () => {
-    var planeGeometry = new THREE.PlaneGeometry(200, 200, 1, 1);
-    var canvas = document.createElement("canvas");
-    canvas.width = 256;
-    canvas.height = 256;
-
-    // Get a reference to the 2D rendering context
-    var ctx = canvas.getContext("2d");
-
-    // Define the color palette
-    var colors = [  "#f44336",  "#e91e63",  "#9c27b0",  "#673ab7",  "#3f51b5",  "#2196f3",  "#03a9f4",  "#00bcd4",  "#009688",  "#4caf50"];
-
-    // Draw the pattern on the canvas
-    for (var x = 0; x < canvas.width; x++) {
-        for (var y = 0; y < canvas.height; y++) {
-            ctx.fillStyle = colors[(x + y) % colors.length];
-            ctx.fillRect(x, y, 1, 1);
+        if (!((x > -700 && x < 700) && (z > -700 && z < 700))) {
+            addHill(x, z, r, top);
         }
     }
-    // Create a texture from the canvas
-    var texture = new THREE.CanvasTexture(canvas);
+    console.log("Average height of all hills:", sum / 500);
+};
 
-    // Apply the texture to the plane as a material
-    var material = new THREE.MeshBasicMaterial({ map: texture });
-    var plane = new THREE.Mesh(planeGeometry, material);
+const addSpace = () => {
+    const starsGeometry = new THREE.BufferGeometry();
+    const starsMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 100 });
+    const starCount = 1200;
+    const starPositions = new Float32Array(starCount * 3);
 
-    // Rotate the plane to be flat on the XZ plane
-    plane.rotation.x = -0.5 * Math.PI;
+    for (let i = 0; i < starCount * 3; i++) {
+        starPositions[i] = Math.random() * 100000 - 50000;
+    }
 
-    scene.add(plane);
-}
+    starsGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+    const stars = new THREE.Points(starsGeometry, starsMaterial);
+    scene.add(stars);
+};
 
-addPlane();
-addHill(0, 0);
-addHill(-20, 0);
-addHill(+24, -12);
-addHill(+30, -30);
+const addTerrain = () => {
+    const loader = new THREE.TextureLoader();
+    const file = "https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/terrain/heightmap4.png";
+    loader.load(file, (heightMapTexture) => {
+        console.log(heightMapTexture.image.data.length);
+        const terrainWidth = 100000;
+        const terrainHeight = 100000;
+        const terrainGeometry = new THREE.PlaneGeometry(terrainWidth, terrainHeight, 255, 255);
+        terrainGeometry.rotateX(-Math.PI / 2);
 
+        for (let i = 0; i < terrainGeometry.attributes.position.count; i++) {
+            const vertex = new THREE.Vector3();
+            vertex.fromBufferAttribute(terrainGeometry.attributes.position, i);
+            const y = heightMapTexture.image.data[i] * 50; // Adjust the multiplier to change the terrain height
+            terrainGeometry.attributes.position.setY(i, y);
+        }
+
+        terrainGeometry.computeVertexNormals();
+
+        const terrainMaterial = new THREE.MeshStandardMaterial({ color: 0x777777 });
+        const terrainMesh = new THREE.Mesh(terrainGeometry, terrainMaterial);
+        terrainMesh.receiveShadow = true;
+        scene.add(terrainMesh);
+    });
+};
+
+var renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x000000, 1);
+renderer.localClippingEnabled = true;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.domElement.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+});
+document.getElementById("container").appendChild(renderer.domElement);
+
+var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.2, 1500000);
+camera.position.set(2350, 0, 0);
+camera.lookAt(0, 0, 0);
 var controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.enablePan = false;
+camera.updateProjectionMatrix();
 
-function animate() {
+addSpace();
+// addTerrain();
+var pointLight = new THREE.PointLight(0xffff00, 1);
+pointLight.position.set(0, 0, 0);
+scene.add(pointLight);
+
+addCube();
+setupGLTFLoader();
+addHills();
+addText("Hello There! ", 1,0,200);
+addText("Thanks for coming :)", 0, 0, 0);
+addText("This is Madhav Shroff's Portfolio", 1, 0, -200);
+addText("(Work in Progress)", 1, 0, -400);
+
+var angle = -Math.PI / 2;
+var radius = 1000000;
+var speed = 0.003;
+
+(function animate() {
     requestAnimationFrame(animate);
-    renderer.render(scene, camera);
+    renderer.render(scene, camera); angle += speed;
+    pointLight.position.set(radius * Math.cos(angle), radius * Math.sin(angle), 0);
     controls.update();
-}
-  animate();
+})();

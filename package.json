@@ -1,0 +1,24 @@
+{
+  "name": "madhav-shroff",
+  "version": "1.0.0",
+  "description": "Personal Website for Madhav Shroff",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MadhavShroff/madhav-shroff.git"
+  },
+  "author": "Madhav Shroff",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MadhavShroff/madhav-shroff/issues"
+  },
+  "homepage": "https://github.com/MadhavShroff/madhav-shroff#readme",
+  "dependencies": {
+    "@react-three/fiber": "^8.11.2",
+    "@types/three": "^0.149.0",
+    "three": "^0.149.0"
+  }
+}
